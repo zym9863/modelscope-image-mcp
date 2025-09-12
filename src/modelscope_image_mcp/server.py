@@ -66,6 +66,11 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": f"模型名称，默认为 {DEFAULT_MODEL}",
                         "default": DEFAULT_MODEL,
                     },
+                    "size": {
+                        "type": "string",
+                        "description": "生成图像分辨率大小，Qwen-Image支持:[64x64,1664x1664]，默认为 '1024x1024'",
+                        "default": "1024x1024",
+                    },
                     "output_filename": {
                         "type": "string", 
                         "description": "输出图片文件名，默认为 'result_image.jpg'",
@@ -97,6 +102,7 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[types.T
 async def generate_image(
     prompt: str,
     model: str = DEFAULT_MODEL,
+    size: str = "1024x1024",
     output_filename: str = "result_image.jpg",
     output_dir: str = "./outputs",
 ) -> list[types.TextContent]:
@@ -122,7 +128,8 @@ async def generate_image(
         # 准备请求数据
         data = {
             "model": model,
-            "prompt": prompt
+            "prompt": prompt,
+            "size": size
         }
         
         logger.info(f"正在使用模型 {model} 生成图片，提示词: {prompt}")
@@ -203,6 +210,7 @@ async def generate_image(
                             text=f"图片生成成功！\n"
                                  f"提示词: {prompt}\n"
                                  f"模型: {model}\n"
+                                 f"分辨率: {size}\n"
                                  f"保存路径: {os.path.abspath(output_path)}\n"
                                  f"输出目录: {os.path.abspath(output_dir)}\n"
                                  f"文件名: {output_filename}\n"

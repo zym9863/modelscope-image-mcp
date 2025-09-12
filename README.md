@@ -132,6 +132,7 @@ When running successfully you should see log lines showing task submission and p
   "arguments": {
     "prompt": "A futuristic city with flying cars, cyberpunk style",
     "model": "Qwen/Qwen-Image",
+    "size": "1024x1024",
     "output_filename": "cyberpunk_city.png",
     "output_dir": "./generated_images"
   }
@@ -160,6 +161,7 @@ Creates an image from a text prompt using the ModelScope async API.
 Parameters:
 - prompt (string, required): The text description of the desired image
 - model (string, optional, default: Qwen/Qwen-Image): Model name passed to API
+- size (string, optional, default: 1024x1024): Image resolution size, Qwen-Image supports: [64x64,1664x1664]
 - output_filename (string, optional, default: result_image.jpg): Local filename to save the first output image
 - output_dir (string, optional, default: ./outputs): Directory path where the image will be saved
 
@@ -170,6 +172,7 @@ Sample invocation (conceptual JSON sent by MCP client):
   "name": "generate_image",
   "arguments": {
     "prompt": "A golden cat playing in a garden",
+    "size": "1024x1024",
     "output_filename": "cat.jpg",
     "output_dir": "./my_images"
   }
@@ -257,6 +260,11 @@ modelscope-image-mcp/
 | No such file or directory | Output directory doesn't exist | Server will create it automatically, or specify existing path |
 
 ## Changelog
+
+### 1.0.1
+- Added size parameter support for customizable image resolution
+- Improved image generation with Qwen-Image model resolution range [64x64,1664x1664]
+- Enhanced documentation with size parameter usage examples
 
 ### 1.0.0
 - Major update with improved async handling and output directory support

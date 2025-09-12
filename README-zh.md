@@ -127,6 +127,7 @@ uvx --from . modelscope-image-mcp
   "arguments": {
     "prompt": "未来城市，有飞行的汽车，赛博朋克风格",
     "model": "Qwen/Qwen-Image",
+    "size": "1024x1024",
     "output_filename": "cyberpunk_city.png",
     "output_dir": "./generated_images"
   }
@@ -155,6 +156,7 @@ uvx --from . modelscope-image-mcp
 参数：
 - prompt (字符串，必填)：描述你想生成的图片
 - model (字符串，可选，默认：Qwen/Qwen-Image)：API 使用的模型名称
+- size (字符串，可选，默认：1024x1024)：生成图像分辨率大小，Qwen-Image支持：[64x64,1664x1664]
 - output_filename (字符串，可选，默认：result_image.jpg)：保存的本地文件名
 - output_dir (字符串，可选，默认：./outputs)：图片保存的目录路径
 
@@ -165,6 +167,7 @@ uvx --from . modelscope-image-mcp
   "name": "generate_image",
   "arguments": {
     "prompt": "一只金色的猫在花园里玩耍",
+    "size": "1024x1024",
     "output_filename": "cat.jpg",
     "output_dir": "./my_images"
   }
@@ -251,6 +254,11 @@ modelscope-image-mcp/
 | No such file or directory | 输出目录不存在 | 服务器会自动创建，或指定现有路径 |
 
 ## 更新日志
+
+### 1.0.1
+- 新增size参数支持，可自定义图像分辨率
+- 改进图片生成，支持Qwen-Image模型分辨率范围[64x64,1664x1664]
+- 增强文档说明，添加size参数使用示例
 
 ### 1.0.0
 - 重大更新：改进异步处理和输出目录支持
