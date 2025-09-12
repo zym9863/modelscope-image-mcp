@@ -7,8 +7,11 @@
 import asyncio
 import logging
 import os
+import time
+import json
 from functools import lru_cache
 from typing import Any, Optional
+from io import BytesIO
 
 import httpx
 from mcp.server import NotificationOptions, Server
@@ -16,6 +19,7 @@ from mcp.server.models import InitializationOptions
 from mcp.server.stdio import stdio_server
 from mcp import types
 from pydantic import AnyUrl
+from PIL import Image
 
 
 # 配置日志记录
@@ -23,8 +27,8 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("modelscope-image-mcp")
 
 # ModelScope API配置
-MODELSCOPE_API_BASE = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text2image/image-synthesis"
-DEFAULT_MODEL = "wanx-v1"
+MODELSCOPE_API_BASE = "https://api-inference.modelscope.cn/"
+DEFAULT_MODEL = "Qwen/Qwen-Image"
 
 app = Server("modelscope-image-mcp")
 
@@ -33,11 +37,11 @@ app = Server("modelscope-image-mcp")
 def get_api_key() -> str:
     """
     获取API密钥
-    优先从环境变量MODELSCOPE_API_KEY获取，如果没有则从DASHSCOPE_API_KEY获取
+    从环境变量MODELSCOPE_SDK_TOKEN获取
     """
-    api_key = os.getenv("MODELSCOPE_API_KEY") or os.getenv("DASHSCOPE_API_KEY")
+    api_key = os.getenv("MODELSCOPE_SDK_TOKEN")
     if not api_key:
-        raise ValueError("需要设置 MODELSCOPE_API_KEY 或 DASHSCOPE_API_KEY 环境变量")
+        raise ValueError("需要设置 MODELSCOPE_SDK_TOKEN 环境变量")
     return api_key
 
 
@@ -57,26 +61,15 @@ async def handle_list_tools() -> list[types.Tool]:
                         "type": "string",
                         "description": "图片生成提示词",
                     },
-                    "negative_prompt": {
-                        "type": "string",
-                        "description": "负面提示词（可选）",
-                    },
                     "model": {
                         "type": "string",
                         "description": f"模型名称，默认为 {DEFAULT_MODEL}",
                         "default": DEFAULT_MODEL,
                     },
-                    "size": {
-                        "type": "string",
-                        "description": "图片尺寸，格式为 'widthxheight'，默认为 '1024x1024'",
-                        "default": "1024x1024",
-                    },
-                    "steps": {
-                        "type": "integer",
-                        "description": "生成步数，默认为 20",
-                        "default": 20,
-                        "minimum": 1,
-                        "maximum": 50,
+                    "output_filename": {
+                        "type": "string", 
+                        "description": "输出图片文件名，默认为 'result_image.jpg'",
+                        "default": "result_image.jpg",
                     },
                 },
                 "required": ["prompt"],
@@ -98,73 +91,130 @@ async def handle_call_tool(name: str, arguments: dict[str, Any]) -> list[types.T
 
 async def generate_image(
     prompt: str,
-    negative_prompt: Optional[str] = None,
     model: str = DEFAULT_MODEL,
-    size: str = "1024x1024",
-    steps: int = 20,
+    output_filename: str = "result_image.jpg",
 ) -> list[types.TextContent]:
     """
-    生成图片的核心函数
+    生成图片的核心函数 - 使用异步任务处理
     """
     try:
         api_key = get_api_key()
         
-        # 解析图片尺寸
-        try:
-            width, height = map(int, size.split("x"))
-        except ValueError:
-            raise ValueError(f"无效的图片尺寸格式: {size}，应为 'widthxheight' 格式")
-        
-        # 准备API请求参数
+        # 准备请求头
         headers = {
             "Authorization": f"Bearer {api_key}",
             "Content-Type": "application/json",
+            "X-ModelScope-Async-Mode": "true"
         }
         
+        # 准备请求数据
         data = {
             "model": model,
-            "input": {
-                "prompt": prompt,
-                "negative_prompt": negative_prompt or "",
-            },
-            "parameters": {
-                "size": f"{width}*{height}",
-                "n": 1,
-                "steps": steps,
-            },
+            "prompt": prompt
         }
         
         logger.info(f"正在使用模型 {model} 生成图片，提示词: {prompt}")
         
-        # 发送API请求
+        # 异步提交任务
         async with httpx.AsyncClient(timeout=60.0) as client:
-            response = await client.post(MODELSCOPE_API_BASE, headers=headers, json=data)
+            # 提交异步任务
+            response = await client.post(
+                f"{MODELSCOPE_API_BASE}v1/images/generations",
+                headers=headers,
+                content=json.dumps(data, ensure_ascii=False).encode('utf-8')
+            )
             response.raise_for_status()
             
-            result = response.json()
+            # 获取任务ID
+            task_result = response.json()
+            task_id = task_result.get("task_id")
+            if not task_id:
+                return [
+                    types.TextContent(
+                        type="text",
+                        text=f"任务提交失败: {task_result}",
+                    )
+                ]
             
-            if "output" in result and "results" in result["output"]:
-                image_url = result["output"]["results"][0]["url"]
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=f"图片生成成功！\n"
-                        f"提示词: {prompt}\n"
-                        f"模型: {model}\n"
-                        f"尺寸: {size}\n"
-                        f"步数: {steps}\n"
-                        f"图片URL: {image_url}",
-                    )
-                ]
-            else:
-                error_msg = result.get("message", "未知错误")
-                logger.error(f"图片生成失败: {error_msg}")
-                return [
-                    types.TextContent(
-                        type="text",
-                        text=f"图片生成失败: {error_msg}",
-                    )
-                ]
+            logger.info(f"任务已提交，任务ID: {task_id}")
+            
+            # 准备轮询请求头
+            poll_headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+                "X-ModelScope-Task-Type": "image_generation"
+            }
+            
+            # 轮询任务状态
+            max_attempts = 120  # 最多轮询2分钟
+            attempt = 0
+            
+            while attempt < max_attempts:
+                await asyncio.sleep(5)  # 等待5秒后查询状态
+                attempt += 1
+                
+                result_response = await client.get(
+                    f"{MODELSCOPE_API_BASE}v1/tasks/{task_id}",
+                    headers=poll_headers
+                )
+                result_response.raise_for_status()
+                result_data = result_response.json()
+                
+                task_status = result_data.get("task_status")
+                logger.info(f"任务状态: {task_status} (尝试 {attempt}/{max_attempts})")
+                
+                if task_status == "SUCCEED":
+                    # 任务成功，获取图片
+                    output_images = result_data.get("output_images", [])
+                    if not output_images:
+                        return [
+                            types.TextContent(
+                                type="text", 
+                                text="任务成功但没有输出图片",
+                            )
+                        ]
+                    
+                    image_url = output_images[0]
+                    logger.info(f"图片生成成功，URL: {image_url}")
+                    
+                    # 下载并保存图片
+                    image_response = await client.get(image_url)
+                    image_response.raise_for_status()
+                    
+                    # 使用PIL保存图片
+                    image = Image.open(BytesIO(image_response.content))
+                    image.save(output_filename)
+                    
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=f"图片生成成功！\n"
+                                 f"提示词: {prompt}\n"
+                                 f"模型: {model}\n"
+                                 f"保存文件: {output_filename}\n"
+                                 f"图片URL: {image_url}",
+                        )
+                    ]
+                    
+                elif task_status == "FAILED":
+                    error_msg = result_data.get("message", "任务失败")
+                    logger.error(f"图片生成失败: {error_msg}")
+                    return [
+                        types.TextContent(
+                            type="text",
+                            text=f"图片生成失败: {error_msg}",
+                        )
+                    ]
+                
+                # 如果状态是PENDING或RUNNING，继续轮询
+                
+            # 超时
+            return [
+                types.TextContent(
+                    type="text",
+                    text="图片生成超时，任务可能仍在处理中",
+                )
+            ]
                 
     except Exception as e:
         logger.error(f"生成图片时发生错误: {str(e)}")

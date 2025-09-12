@@ -2,208 +2,193 @@
 
 [English](README.md) | 中文
 
-一个用于使用 ModelScope Qwen-Image 模型生成图像的 MCP (Model Context Protocol) 服务器。
+一个通过 ModelScope 图像生成 API 生成图片的最小可用 MCP (Model Context Protocol) 服务器。
 
-## 功能特性
+> 说明：先前 README 中提到的 base64 返回、负面提示词等功能当前代码尚未实现。当前版本仅包含一个 `generate_image` 工具：提交异步任务 -> 轮询结果 -> 下载第一张图片并保存到本地。未来计划见“路线图”。
 
-- 使用 ModelScope Qwen-Image 模型生成高质量图像
-- 支持异步任务处理和状态轮询
-- 支持图像 URL 和 base64 编码数据
-- 完善的错误处理和超时保护
-- 支持 uvx 一键运行
+## 当前功能
 
-## 安装和配置
+- 使用 ModelScope 异步任务 API 生成图片
+- 每 5 秒轮询一次任务状态（最多约 2 分钟）
+- 保存第一张输出图片到本地文件
+- 将任务状态、图片 URL、保存文件信息返回 MCP 客户端
+- 明确的错误与超时信息
+- 通过 `uvx` 一条命令即可运行
 
-### 方法 1：从 PyPI 安装（推荐）
+## 环境变量
 
-使用此 MCP 服务器的最简单方法是直接从 PyPI 安装：
+程序从以下环境变量读取访问凭证：
 
-```json
+```
+MODELSCOPE_SDK_TOKEN
+```
+
+如果缺失会抛出异常。令牌申请地址：https://modelscope.cn/my/myaccesstoken
+
+Windows (cmd)：
+```
+set MODELSCOPE_SDK_TOKEN=your_token_here
+```
+PowerShell：
+```
+$env:MODELSCOPE_SDK_TOKEN="your_token_here"
+```
+Linux/macOS：
+```
+export MODELSCOPE_SDK_TOKEN=your_token_here
+```
+
+## 安装与 MCP 客户端配置
+
+可直接在支持 MCP 的客户端（例如 Claude Desktop）里通过 `uvx` 注册，无需手动预装。
+
+### 方式 1：PyPI （发布后推荐）
+
+```jsonc
 {
   "mcpServers": {
     "modelscope-image": {
       "command": "uvx",
       "args": ["modelscope-image-mcp"],
-      "env": {
-        "MODELSCOPE_API_KEY": "your_api_key"
-      }
+      "env": { "MODELSCOPE_SDK_TOKEN": "your_token_here" }
     }
   }
 }
 ```
 
-### 方法 2：从 GitHub 仓库安装
+### 方式 2：直接使用 GitHub 源码
 
-您也可以直接从 GitHub 仓库安装而无需克隆：
-
-```json
+```jsonc
 {
   "mcpServers": {
     "modelscope-image": {
       "command": "uvx",
       "args": [
-        "--from", 
+        "--from",
         "git+https://github.com/zym9863/modelscope-image-mcp.git",
         "modelscope-image-mcp"
       ],
-      "env": {
-        "MODELSCOPE_API_KEY": "your_api_key"
-      }
+      "env": { "MODELSCOPE_SDK_TOKEN": "your_token_here" }
     }
   }
 }
 ```
 
-### 方法 3：本地开发安装
-
-如果您要进行开发或更喜欢克隆仓库：
-
-#### 3.1. 克隆或下载项目
+### 方式 3：本地源码开发
 
 ```bash
 git clone https://github.com/zym9863/modelscope-image-mcp.git
 cd modelscope-image-mcp
-```
-
-#### 3.2. 配置环境变量
-
-复制环境变量示例文件：
-```bash
-cp .env.example .env
-```
-
-编辑 `.env` 文件设置您的 ModelScope API Key：
-```bash
-MODELSCOPE_API_KEY=your_actual_api_key_here
-```
-
-**获取 API Key：**
-1. 访问 [ModelScope 个人中心](https://modelscope.cn/my/myaccesstoken)
-2. 登录您的账户
-3. 生成并复制 Access Token
-
-#### 3.3. 安装依赖
-
-使用 uv 安装依赖：
-```bash
 uv sync
 ```
 
-## 使用方法
+然后在 MCP 客户端配置：
 
-通过上述任意方法安装后，MCP 服务器可以与 Claude Desktop 或任何其他支持 MCP 的客户端一起使用。
+```jsonc
+{
+  "mcpServers": {
+    "modelscope-image": {
+      "command": "uvx",
+      "args": ["--from", ".", "modelscope-image-mcp"],
+      "env": { "MODELSCOPE_SDK_TOKEN": "your_token_here" }
+    }
+  }
+}
+```
 
-### 快速测试
-
-如果您想在将其添加到 MCP 客户端之前先在本地测试服务器：
+## 本地快速测试
 
 ```bash
-# 方法 1：测试 PyPI 安装
-uvx modelscope-image-mcp
-
-# 方法 2：测试从 GitHub 安装
-uvx --from git+https://github.com/zym9863/modelscope-image-mcp.git modelscope-image-mcp
-
-# 方法 3：测试本地安装
 uvx --from . modelscope-image-mcp
 ```
 
-## API 工具说明
+看到日志输出任务提交与轮询状态即表示运行正常。
+
+## 可用工具
 
 ### generate_image
 
-主要的图像生成工具。
+使用 ModelScope 异步接口根据文字提示生成图片。
 
-**参数：**
-- `prompt`（必需）：图像生成提示词，支持中英文
-- `return_base64`（可选）：是否返回 base64 编码的图像数据，默认为 `false`
+参数：
+- prompt (字符串，必填)：描述你想生成的图片
+- model (字符串，可选，默认：Qwen/Qwen-Image)：API 使用的模型名称
+- output_filename (字符串，可选，默认：result_image.jpg)：保存的本地文件名
 
-**示例调用：**
+示例调用（概念 JSON）：
 
-```python
-# 基础用法 - 仅返回图像 URL
+```jsonc
 {
-  "prompt": "一只金色的猫在花园里玩耍"
-}
-
-# 高级用法 - 返回 URL 和 base64 数据
-{
-  "prompt": "夕阳下的未来城市，有飞行汽车",
-  "return_base64": true
+  "name": "generate_image",
+  "arguments": {
+    "prompt": "一只金色的猫在花园里玩耍",
+    "output_filename": "cat.jpg"
+  }
 }
 ```
 
-**返回结果：**
-成功时返回：
-- 成功状态
-- 图像链接
-- 使用的提示词
-- 任务 ID
-- base64 数据（如果请求）
+示例文本返回：
 
-失败时返回：
-- 错误状态
-- 错误消息  
-- 详细错误描述
+```
+图片生成成功！
+提示词: 一只金色的猫在花园里玩耍
+模型: Qwen/Qwen-Image
+保存文件: cat.jpg
+图片URL: https://.../generated_image.jpg
+```
 
-## 技术细节
+说明：
+- 目前仅保存第一张图片
+- 失败或超时会返回对应提示
+- 尚未返回 base64 数据（列入路线图）
 
-### 工作流程
+## 内部流程
 
-1. **异步任务提交**：向 ModelScope API 提交图像生成请求
-2. **任务轮询**：每 5 秒检查任务状态，最多等待 150 秒
-3. **结果处理**：任务完成时获取图像 URL，可选下载并转换为 base64
-4. **错误处理**：优雅地捕获和处理各种可能的错误
+1. 使用 `X-ModelScope-Async-Mode: true` 提交异步任务
+2. 每 5 秒轮询 `/v1/tasks/{task_id}`（最多 120 次）
+3. 成功后下载第一张图片并用 Pillow 保存
+4. 返回结果文本到 MCP 客户端
+5. 出错 / 超时给出明确描述
 
-### 超时和重试
+## 路线图（计划特性）
 
-- 最大等待时间：150 秒（30 次轮询 × 5 秒间隔）
-- 网络请求超时：使用 requests 库默认超时设置
-- 任务状态检查间隔：5 秒
+- 可选返回 base64 数据
+- 负面提示词 / 指导系数
+- 可调轮询间隔与超时时间
+- 多图片输出选择
+- 进度通知（notifications）
 
-### 支持的图像格式
-
-- 生成格式：ModelScope API 默认格式
-- base64 转换：JPEG 格式
-
-## 开发和测试
-
-### 本地开发
+## 开发
 
 ```bash
-# 安装开发依赖
 uv sync --dev
-
-# 运行服务器
 uv run python -m modelscope_image_mcp.server
-
-# 或使用 uvx
+# 或
 uvx --from . modelscope-image-mcp
 ```
 
-### 测试连接
+## 故障排查
 
-服务器启动后，您可以在支持 MCP 协议的客户端中测试图像生成功能。
-
-## 环境要求
-
-- Python >= 3.10
-- uv 包管理器
-- ModelScope API Key
-- 网络连接
-
-## 许可证
-
-本项目使用 MIT 许可证。
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request！
+| 现象 | 可能原因 | 处理 |
+|------|----------|------|
+| ValueError: 需要设置 MODELSCOPE_SDK_TOKEN 环境变量 | 缺少令牌 | 设置环境变量后重启 |
+| 图片生成超时 | 模型处理缓慢 | 重试；未来将提供可调超时 |
+| httpx 超时/网络错误 | 网络不稳定 | 检查网络后重试 |
 
 ## 更新日志
 
-### v0.1.0
-- 初始版本
-- 支持基本图像生成功能
-- 支持 base64 编码返回
-- 完善的错误处理机制
+### 0.1.0
+- 最小实现：异步轮询 + 本地保存
+- 修复 `notification_options` 为 None 引发的 AttributeError
+
+## 许可证
+
+MIT 许可证
+
+## 贡献
+
+欢迎提交 Issue / PR，问题请附重现步骤。
+
+## 免责声明
+
+此项目为非官方集成示例，使用需遵守 ModelScope 服务条款。

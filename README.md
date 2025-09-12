@@ -2,208 +2,203 @@
 
 English | [中文](README-zh.md)
 
-A MCP (Model Context Protocol) server for generating images using ModelScope Qwen-Image model.
+An MCP (Model Context Protocol) server for generating images via the ModelScope image generation API.
 
-## Features
+> IMPORTANT: Earlier drafts of this README mentioned features like returning base64 data, negative prompts, and additional parameters. The current released code (see `src/modelscope_image_mcp/server.py`) implements a focused minimal feature set: one tool `generate_image` that submits an async task and saves the resulting image locally. Planned / upcoming features are listed in the roadmap below.
 
-- Generate high-quality images using ModelScope Qwen-Image model
-- Support for async task processing and status polling
-- Support for both image URL and base64 encoded data
-- Complete error handling and timeout protection
-- One-click run with uvx
+## Current Features
 
-## Installation and Configuration
+- Asynchronous image generation using ModelScope async task API
+- Periodic task status polling (every 5 seconds, up to 2 minutes)
+- Saves the first generated image to a local file
+- Returns task status and image URL to the MCP client
+- Robust error handling + timeout messaging
+- Simple one-command start with `uvx`
 
-### Method 1: Install from PyPI (Recommended)
+## Environment Variable
 
-The simplest way to use this MCP server is to install it directly from PyPI:
+The server reads your credential from:
 
-```json
+```
+MODELSCOPE_SDK_TOKEN
+```
+
+If it is missing, the server will raise an error. Obtain a token from: https://modelscope.cn/my/myaccesstoken
+
+### Set on Windows (cmd):
+```
+set MODELSCOPE_SDK_TOKEN=your_token_here
+```
+PowerShell:
+```
+$env:MODELSCOPE_SDK_TOKEN="your_token_here"
+```
+Unix/macOS bash/zsh:
+```
+export MODELSCOPE_SDK_TOKEN=your_token_here
+```
+
+## Installation & MCP Client Configuration
+
+You can register the server directly in an MCP-compatible client (e.g. Claude Desktop) without a prior manual install thanks to `uvx`.
+
+### Option 1: PyPI (Recommended once published)
+
+```jsonc
 {
   "mcpServers": {
     "modelscope-image": {
       "command": "uvx",
       "args": ["modelscope-image-mcp"],
       "env": {
-        "MODELSCOPE_API_KEY": "your_api_key"
+        "MODELSCOPE_SDK_TOKEN": "your_token_here"
       }
     }
   }
 }
 ```
 
-### Method 2: Install from GitHub Repository
+### Option 2: Direct from GitHub
 
-You can also install directly from the GitHub repository without cloning:
-
-```json
+```jsonc
 {
   "mcpServers": {
     "modelscope-image": {
       "command": "uvx",
       "args": [
-        "--from", 
+        "--from",
         "git+https://github.com/zym9863/modelscope-image-mcp.git",
         "modelscope-image-mcp"
       ],
       "env": {
-        "MODELSCOPE_API_KEY": "your_api_key"
+        "MODELSCOPE_SDK_TOKEN": "your_token_here"
       }
     }
   }
 }
 ```
 
-### Method 3: Local Development Installation
-
-For development or if you prefer to clone the repository:
-
-#### 3.1. Clone or download the project
+### Option 3: Local Development Checkout
 
 ```bash
 git clone https://github.com/zym9863/modelscope-image-mcp.git
 cd modelscope-image-mcp
-```
-
-#### 3.2. Configure environment variables
-
-Copy the environment variables example file:
-```bash
-cp .env.example .env
-```
-
-Edit the `.env` file to set your ModelScope API Key:
-```bash
-MODELSCOPE_API_KEY=your_actual_api_key_here
-```
-
-**Get API Key:**
-1. Visit [ModelScope Personal Center](https://modelscope.cn/my/myaccesstoken)
-2. Login to your account
-3. Generate and copy Access Token
-
-#### 3.3. Install dependencies
-
-Use uv to install dependencies:
-```bash
 uv sync
 ```
 
-## Usage
+Then configure MCP client entry using:
 
-After installing via any of the above methods, the MCP server can be used with Claude Desktop or any other MCP-compatible client.
+```jsonc
+{
+  "mcpServers": {
+    "modelscope-image": {
+      "command": "uvx",
+      "args": ["--from", ".", "modelscope-image-mcp"],
+      "env": { "MODELSCOPE_SDK_TOKEN": "your_token_here" }
+    }
+  }
+}
+```
 
-### Quick Test
-
-If you want to test the server locally before adding it to your MCP client:
+## Quick Local Smoke Test
 
 ```bash
-# Method 1: Test PyPI installation
-uvx modelscope-image-mcp
-
-# Method 2: Test from GitHub
-uvx --from git+https://github.com/zym9863/modelscope-image-mcp.git modelscope-image-mcp
-
-# Method 3: Test local installation
+# Run directly (local checkout)
 uvx --from . modelscope-image-mcp
 ```
 
-## API Tool Description
+When running successfully you should see log lines showing task submission and polling.
+
+## Available Tool
 
 ### generate_image
 
-The main tool for generating images.
+Creates an image from a text prompt using the ModelScope async API.
 
-**Parameters:**
-- `prompt` (required): Image generation prompt, supports Chinese and English
-- `return_base64` (optional): Whether to return base64 encoded image data, default is `false`
+Parameters:
+- prompt (string, required): The text description of the desired image
+- model (string, optional, default: Qwen/Qwen-Image): Model name passed to API
+- output_filename (string, optional, default: result_image.jpg): Local filename to save the first output image
 
-**Example calls:**
+Sample invocation (conceptual JSON sent by MCP client):
 
-```python
-# Basic usage - returns only image URL
+```jsonc
 {
-  "prompt": "A golden cat playing in a garden"
-}
-
-# Advanced usage - returns URL and base64 data
-{
-  "prompt": "A futuristic city at sunset with flying cars",
-  "return_base64": true
+  "name": "generate_image",
+  "arguments": {
+    "prompt": "A golden cat playing in a garden",
+    "output_filename": "cat.jpg"
+  }
 }
 ```
 
-**Return results:**
-On success returns:
-- Success status
-- Image link
-- Used prompt
-- Task ID
-- base64 data (if requested)
+Sample textual response payload (returned to the client):
 
-On failure returns:
-- Error status
-- Error message  
-- Detailed error description
+```
+图片生成成功！
+提示词: A golden cat playing in a garden
+模型: Qwen/Qwen-Image
+保存文件: cat.jpg
+图片URL: https://.../generated_image.jpg
+```
 
-## Technical Details
+Notes:
+- Only the first image URL is used (if multiple are ever returned)
+- If the task fails or times out you receive a descriptive message
+- No base64 data is currently returned (roadmap item)
 
-### Workflow
+## Internal Flow
 
-1. **Async task submission**: Submit image generation request to ModelScope API
-2. **Task polling**: Check task status every 5 seconds, wait up to 150 seconds
-3. **Result processing**: Get image URL when task completes, optionally download and convert to base64
-4. **Error handling**: Capture and handle various possible errors gracefully
+1. Submit async generation request with header `X-ModelScope-Async-Mode: true`
+2. Poll task endpoint `/v1/tasks/{task_id}` every 5 seconds (max 120 attempts ~= 2 minutes)
+3. On SUCCEED download first image and save via Pillow (PIL)
+4. Return textual metadata to MCP client
+5. Provide clear error / timeout messages otherwise
 
-### Timeout and Retry
+## Roadmap
 
-- Maximum wait time: 150 seconds (30 polls × 5 second intervals)
-- Network request timeout: Uses requests library default timeout settings
-- Task status check interval: 5 seconds
+Planned enhancements (not yet implemented in `server.py`):
+- Optional base64 return data
+- Negative prompt & guidance parameters
+- Adjustable polling interval & timeout via arguments
+- Multiple image outputs selection
+- Streaming progress notifications
 
-### Supported Image Formats
-
-- Generation format: ModelScope API default format
-- base64 conversion: JPEG format
-
-## Development and Testing
-
-### Local Development
+## Development
 
 ```bash
-# Install dev dependencies
+# Install all (including dev) dependencies
 uv sync --dev
 
-# Run server
+# Run server module
 uv run python -m modelscope_image_mcp.server
 
-# Or use uvx
+# Or via uvx using local source
 uvx --from . modelscope-image-mcp
 ```
 
-### Test Connection
+## Troubleshooting
 
-After the server starts, you can test image generation functionality in MCP protocol supporting clients.
-
-## Environment Requirements
-
-- Python >= 3.10
-- uv package manager
-- ModelScope API Key
-- Network connection
-
-## License
-
-This project uses MIT License.
-
-## Contributing
-
-Issues and Pull Requests are welcome!
+| Symptom | Possible Cause | Action |
+|---------|----------------|--------|
+| ValueError: 需要设置 MODELSCOPE_SDK_TOKEN 环境变量 | Token missing | Export / set environment variable then restart |
+| 图片生成超时 | Slow model processing | Re-run; later we will expose longer timeout argument |
+| 网络相关 httpx.TimeoutException | Connectivity issues | Check network / retry |
 
 ## Changelog
 
-### v0.1.0
-- Initial version
-- Support basic image generation functionality
-- Support base64 encoded return
-- Complete error handling mechanism
+### 0.1.0
+- Initial minimal implementation with async polling & local image save
+- Fixed bug: `notification_options` previously None causing AttributeError
+
+## License
+
+MIT License
+
+## Contributing
+
+PRs & issues welcome. Please describe reproduction steps for any failures.
+
+## Disclaimer
+
+This is an unofficial integration example. Use at your own risk; abide by ModelScope Terms of Service.
