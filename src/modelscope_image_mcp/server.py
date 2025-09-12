@@ -71,6 +71,11 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "输出图片文件名，默认为 'result_image.jpg'",
                         "default": "result_image.jpg",
                     },
+                    "output_dir": {
+                        "type": "string",
+                        "description": "输出目录路径，默认为 './outputs'",
+                        "default": "./outputs",
+                    },
                 },
                 "required": ["prompt"],
             },
@@ -93,11 +98,18 @@ async def generate_image(
     prompt: str,
     model: str = DEFAULT_MODEL,
     output_filename: str = "result_image.jpg",
+    output_dir: str = "./outputs",
 ) -> list[types.TextContent]:
     """
     生成图片的核心函数 - 使用异步任务处理
     """
     try:
+        # 创建输出目录（如果不存在）
+        os.makedirs(output_dir, exist_ok=True)
+        
+        # 构建完整的输出文件路径
+        output_path = os.path.join(output_dir, output_filename)
+        
         api_key = get_api_key()
         
         # 准备请求头
@@ -183,7 +195,7 @@ async def generate_image(
                     
                     # 使用PIL保存图片
                     image = Image.open(BytesIO(image_response.content))
-                    image.save(output_filename)
+                    image.save(output_path)
                     
                     return [
                         types.TextContent(
@@ -191,7 +203,9 @@ async def generate_image(
                             text=f"图片生成成功！\n"
                                  f"提示词: {prompt}\n"
                                  f"模型: {model}\n"
-                                 f"保存文件: {output_filename}\n"
+                                 f"保存路径: {os.path.abspath(output_path)}\n"
+                                 f"输出目录: {os.path.abspath(output_dir)}\n"
+                                 f"文件名: {output_filename}\n"
                                  f"图片URL: {image_url}",
                         )
                     ]
