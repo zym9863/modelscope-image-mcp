@@ -14,14 +14,58 @@ A MCP (Model Context Protocol) server for generating images using ModelScope Qwe
 
 ## Installation and Configuration
 
-### 1. Clone or download the project
+### Method 1: Install from PyPI (Recommended)
+
+The simplest way to use this MCP server is to install it directly from PyPI:
+
+```json
+{
+  "mcpServers": {
+    "modelscope-image": {
+      "command": "uvx",
+      "args": ["modelscope-image-mcp"],
+      "env": {
+        "MODELSCOPE_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+### Method 2: Install from GitHub Repository
+
+You can also install directly from the GitHub repository without cloning:
+
+```json
+{
+  "mcpServers": {
+    "modelscope-image": {
+      "command": "uvx",
+      "args": [
+        "--from", 
+        "git+https://github.com/zym9863/modelscope-image-mcp.git",
+        "modelscope-image-mcp"
+      ],
+      "env": {
+        "MODELSCOPE_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+### Method 3: Local Development Installation
+
+For development or if you prefer to clone the repository:
+
+#### 3.1. Clone or download the project
 
 ```bash
 git clone https://github.com/zym9863/modelscope-image-mcp.git
 cd modelscope-image-mcp
 ```
 
-### 2. Configure environment variables
+#### 3.2. Configure environment variables
 
 Copy the environment variables example file:
 ```bash
@@ -38,7 +82,7 @@ MODELSCOPE_API_KEY=your_actual_api_key_here
 2. Login to your account
 3. Generate and copy Access Token
 
-### 3. Install dependencies
+#### 3.3. Install dependencies
 
 Use uv to install dependencies:
 ```bash
@@ -47,32 +91,21 @@ uv sync
 
 ## Usage
 
-### Method 1: Run directly with uvx (Recommended)
+After installing via any of the above methods, the MCP server can be used with Claude Desktop or any other MCP-compatible client.
+
+### Quick Test
+
+If you want to test the server locally before adding it to your MCP client:
 
 ```bash
-# Set environment variable
-export MODELSCOPE_API_KEY="your_api_key"
+# Method 1: Test PyPI installation
+uvx modelscope-image-mcp
 
-# Run MCP Server
+# Method 2: Test from GitHub
+uvx --from git+https://github.com/zym9863/modelscope-image-mcp.git modelscope-image-mcp
+
+# Method 3: Test local installation
 uvx --from . modelscope-image-mcp
-```
-
-### Method 2: Configure in MCP Client
-
-Add to Claude Desktop or other MCP client configuration file:
-
-```json
-{
-  "mcpServers": {
-    "modelscope-image": {
-      "command": "uvx",
-      "args": ["--from", "/path/to/modelscope-image-mcp", "modelscope-image-mcp"],
-      "env": {
-        "MODELSCOPE_API_KEY": "your_api_key"
-      }
-    }
-  }
-}
 ```
 
 ## API Tool Description

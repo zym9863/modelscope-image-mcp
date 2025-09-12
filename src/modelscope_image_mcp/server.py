@@ -240,6 +240,14 @@ async def main():
 
 def cli_main():
     """CLI 入口点"""
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--help":
+        print("ModelScope Image MCP Server")
+        print("Usage: modelscope-image-mcp")
+        print("Environment variables:")
+        print("  MODELSCOPE_API_KEY: Your ModelScope API key (required)")
+        return
+    
     asyncio.run(main())
 
 

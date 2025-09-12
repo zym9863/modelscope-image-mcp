@@ -14,14 +14,58 @@
 
 ## 安装和配置
 
-### 1. 克隆或下载项目
+### 方法 1：从 PyPI 安装（推荐）
+
+使用此 MCP 服务器的最简单方法是直接从 PyPI 安装：
+
+```json
+{
+  "mcpServers": {
+    "modelscope-image": {
+      "command": "uvx",
+      "args": ["modelscope-image-mcp"],
+      "env": {
+        "MODELSCOPE_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+### 方法 2：从 GitHub 仓库安装
+
+您也可以直接从 GitHub 仓库安装而无需克隆：
+
+```json
+{
+  "mcpServers": {
+    "modelscope-image": {
+      "command": "uvx",
+      "args": [
+        "--from", 
+        "git+https://github.com/zym9863/modelscope-image-mcp.git",
+        "modelscope-image-mcp"
+      ],
+      "env": {
+        "MODELSCOPE_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+### 方法 3：本地开发安装
+
+如果您要进行开发或更喜欢克隆仓库：
+
+#### 3.1. 克隆或下载项目
 
 ```bash
 git clone https://github.com/zym9863/modelscope-image-mcp.git
 cd modelscope-image-mcp
 ```
 
-### 2. 配置环境变量
+#### 3.2. 配置环境变量
 
 复制环境变量示例文件：
 ```bash
@@ -38,7 +82,7 @@ MODELSCOPE_API_KEY=your_actual_api_key_here
 2. 登录您的账户
 3. 生成并复制 Access Token
 
-### 3. 安装依赖
+#### 3.3. 安装依赖
 
 使用 uv 安装依赖：
 ```bash
@@ -47,32 +91,21 @@ uv sync
 
 ## 使用方法
 
-### 方法 1：直接使用 uvx 运行（推荐）
+通过上述任意方法安装后，MCP 服务器可以与 Claude Desktop 或任何其他支持 MCP 的客户端一起使用。
+
+### 快速测试
+
+如果您想在将其添加到 MCP 客户端之前先在本地测试服务器：
 
 ```bash
-# 设置环境变量
-export MODELSCOPE_API_KEY="your_api_key"
+# 方法 1：测试 PyPI 安装
+uvx modelscope-image-mcp
 
-# 运行 MCP 服务器
+# 方法 2：测试从 GitHub 安装
+uvx --from git+https://github.com/zym9863/modelscope-image-mcp.git modelscope-image-mcp
+
+# 方法 3：测试本地安装
 uvx --from . modelscope-image-mcp
-```
-
-### 方法 2：在 MCP 客户端中配置
-
-添加到 Claude Desktop 或其他 MCP 客户端配置文件：
-
-```json
-{
-  "mcpServers": {
-    "modelscope-image": {
-      "command": "uvx",
-      "args": ["--from", "/path/to/modelscope-image-mcp", "modelscope-image-mcp"],
-      "env": {
-        "MODELSCOPE_API_KEY": "your_api_key"
-      }
-    }
-  }
-}
 ```
 
 ## API 工具说明

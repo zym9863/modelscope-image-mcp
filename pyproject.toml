@@ -3,6 +3,22 @@ name = "modelscope-image-mcp"
 version = "0.1.0"
 description = "MCP Server for ModelScope Qwen-Image text-to-image generation"
 readme = "README.md"
+license = {file = "LICENSE"}
+authors = [
+    {name = "zym9863", email = "ym214413520@gmail.com"}
+]
+keywords = ["mcp", "modelscope", "image", "generation", "ai", "qwen"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+]
 requires-python = ">=3.10"
 dependencies = [
     "mcp>=1.0.0",
@@ -10,6 +26,11 @@ dependencies = [
     "python-dotenv",
     "Pillow",
 ]
+
+[project.urls]
+Homepage = "https://github.com/zym9863/modelscope-image-mcp"
+Repository = "https://github.com/zym9863/modelscope-image-mcp"
+"Bug Tracker" = "https://github.com/zym9863/modelscope-image-mcp/issues"
 
 [project.scripts]
 modelscope-image-mcp = "modelscope_image_mcp.server:cli_main"
