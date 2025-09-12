@@ -1,5 +1,7 @@
 # ModelScope Image MCP Server
 
+English | [中文](README-zh.md)
+
 A MCP (Model Context Protocol) server for generating images using ModelScope Qwen-Image model.
 
 ## Features
