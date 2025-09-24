@@ -17,10 +17,25 @@
 - **缺少单元测试与集成测试**: 当前仓库无测试覆盖，未来更改易于引入回归问题。建议为核心函数（如 `generate_image()`）编写模拟 API 的单元测试，并在 CI 中加入网络交互的冒烟测试。
 - **缺少配置文件与日志级别控制**: 日志全局使用 `INFO` 级别，可能在生产环境过于冗长。建议引入配置文件或环境变量来控制日志级别与输出格式。
 
+## P0 修复落实（v1.1.0）
+- 已支持可配置的轮询策略与可选指数退避：
+  - 新增环境变量：`MODELSCOPE_POLL_INTERVAL_SECONDS`、`MODELSCOPE_MAX_POLL_ATTEMPTS`、`MODELSCOPE_POLL_BACKOFF`、`MODELSCOPE_MAX_POLL_INTERVAL_SECONDS`。
+  - 新增可覆盖的工具参数：`poll_interval_seconds`、`max_poll_attempts`、`poll_backoff`、`max_poll_interval_seconds`。
+  - 新增函数 `get_polling_config()`，在 `generate_image()` 中合并环境变量与工具入参。
+- 已增强错误上下文：
+  - 所有关键请求在失败时返回 `status_code`、`request_id`、`body`，成功结果包含 `request_id`。
+  - 日志记录原始响应体，便于排查（`server.py`）。
+- 已增加图片内容校验与保存稳健性：
+  - 下载前校验 `Content-Type` 前缀为 `image/`，否则返回详细错误。
+  - JPG 保存时若存在透明通道，自动转为 `RGB`，避免保存异常。
+- 已支持通过环境变量控制日志级别：
+  - 新增 `MODELSCOPE_LOG_LEVEL`（默认 `INFO`），并引入 `python-dotenv` 自动加载 `.env`。
+- 版本同步：
+  - `server.py` 中 `server_version` 更新为 `1.1.0`。
+
 ## 建议的短期行动
-- **抽象轮询策略**: 将轮询间隔、最大尝试次数转为 `InitializationOptions` 可配置项，或通过工具参数允许客户端覆盖。
-- **增强错误信息**: 在任务失败时返回更详尽的错误上下文（如响应码、请求 ID），方便定位问题。
-- **补充 README**: 在 `README-zh.md` 中补充关于凭证安全、输出目录权限的最佳实践。
+- **补充 README**: 在 `README-zh.md` 中补充关于凭证安全、输出目录权限与新环境变量/工具参数的说明。
+- **补充单元测试与 CI**: 为 `generate_image()` 编写单元测试与集成冒烟测试，并在 CI 中添加必要的工作流。
 
 ## 长期演进方向
 - **多图片选择与元数据返回**: 接口返回的 `output_images` 目前只保存第一项，未来可扩展为返回全部图片，或允许使用者选择保留的索引。

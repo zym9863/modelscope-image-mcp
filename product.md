@@ -4,7 +4,7 @@
 - **产品名称**: ModelScope Image MCP 服务器
 - **目标用户**: 使用 MCP 客户端（如 Claude Desktop）进行图片生成的开发者与 AI 助手用户
 - **核心价值**: 提供稳定、可扩展的图片生成工具接口，简化与 ModelScope API 的集成与使用
-- **当前版本**: 1.0.1
+- **当前版本**: 1.1.0
 
 ## 产品愿景
 打造一个可扩展、可观测、易集成的 ModelScope 图像生成 MCP 服务器，实现从提示词到成品图片的端到端体验，并支持企业级的配置、监控与多输出场景。
@@ -31,9 +31,15 @@
 ## 产品待办列表
 
 ### 高优先级
-- **US-001**: 作为开发者，我希望在任务失败时获取详细错误码与请求 ID，以便快速定位问题。
-- **US-002**: 作为运维人员，我需要通过配置文件或环境变量控制日志级别与轮询间隔，从而优化资源使用。
 - **US-003**: 作为 QA，我希望项目具备核心单元测试与 CI 流程，以避免回归问题。
+
+### 已完成（v1.1.0）
+- **US-001（已完成）**: 失败与成功路径均返回更详细的上下文信息。
+  - 响应中包含 `status_code`、`request_id`、`body`（失败时）；成功结果返回 `request_id`。
+  - 日志记录原始响应体与时间戳，便于追踪。
+- **US-002（已完成）**: 通过环境变量与工具参数控制日志与轮询策略。
+  - 环境变量：`MODELSCOPE_LOG_LEVEL`、`MODELSCOPE_POLL_INTERVAL_SECONDS`、`MODELSCOPE_MAX_POLL_ATTEMPTS`、`MODELSCOPE_POLL_BACKOFF`、`MODELSCOPE_MAX_POLL_INTERVAL_SECONDS`。
+  - 工具参数：`poll_interval_seconds`、`max_poll_attempts`、`poll_backoff`、`max_poll_interval_seconds`。
 
 ### 中优先级
 - **US-004**: 作为终端用户，我希望能够选择保存多张生成图片，以便比较最佳输出。
@@ -55,6 +61,16 @@
 - **US-006**
   - 当调用者请求 base64 数据时，响应文本包含 `data:image/jpeg;base64,` 前缀。
   - 文档更新，说明安全与性能注意事项。
+
+## 配置说明（v1.1.0）
+- **日志级别**: 通过 `MODELSCOPE_LOG_LEVEL` 控制（默认 `INFO`）。
+- **轮询策略**:
+  - `MODELSCOPE_POLL_INTERVAL_SECONDS`（默认 `5`）
+  - `MODELSCOPE_MAX_POLL_ATTEMPTS`（默认 `120`）
+  - `MODELSCOPE_POLL_BACKOFF`（默认 `false`）
+  - `MODELSCOPE_MAX_POLL_INTERVAL_SECONDS`（默认 `30`）
+- **工具参数覆盖**:
+  - `poll_interval_seconds`、`max_poll_attempts`、`poll_backoff`、`max_poll_interval_seconds`
 
 ## 依赖与风险
 - **API 可用性**: 依赖 ModelScope 官方服务，需监控接口变动与配额限制。

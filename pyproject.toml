@@ -1,6 +1,6 @@
 [project]
 name = "modelscope-image-mcp"
-version = "1.0.2"
+version = "1.1.0"
 description = "MCP Server for ModelScope Qwen-Image text-to-image generation"
 readme = "README.md"
 license = {file = "LICENSE"}
@@ -25,6 +25,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "Pillow",
+    "httpx>=0.27.0",
 ]
 
 [project.urls]
